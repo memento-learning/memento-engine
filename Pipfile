@@ -7,6 +7,9 @@ name = "pypi"
 pandas = "*"
 numpy = "*"
 jupyterlab = "*"
+torch = "*"
+torchvision = "*"
+pyarrow = "*"
 
 [dev-packages]
 
