@@ -70,7 +70,7 @@ class DuoLingo(Dataset):
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
-        delta = self.raw_data[idx, 2]
+        delta = self.raw_data[idx, 2] / 86400.0 # Normalize to days
         p = self.raw_data[idx, 0]
         correct = self.raw_data[idx, 6]
         incorrect = self.raw_data[idx, 5] - correct
