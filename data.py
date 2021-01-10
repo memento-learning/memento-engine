@@ -60,6 +60,7 @@ class DuoLingo(Dataset):
         #     pass
     
         self.raw_data = raw_data
+        self.MAX_SESSIONS = 400
 
 
     def __len__(self):
@@ -71,29 +72,37 @@ class DuoLingo(Dataset):
             idx = idx.tolist()
 
         delta = self.raw_data[idx, 2] / 86400.0 # Normalize to days
-        p = self.raw_data[idx, 0]
+        p = self.raw_data[idx, 0] * 1.0
         correct = self.raw_data[idx, 6]
         incorrect = self.raw_data[idx, 5] - correct
 
         user_id = self.raw_data[idx, 3]
         item_id = self.raw_data[idx, 4]
 
-        prev_sessions = None
+        hist_p = []
+        
         if isinstance(idx, list):
-            prev_sessions = []
             for i, uid in enumerate(user_id):
                 all_sessions = self.user_item_ctx[uid][item_id[i]]
-                prev_sessions.append(all_sessions[:all_sessions.index(idx[i])])
+                prev_sessions = all_sessions[:all_sessions.index(idx[i])+1]
+                hist_p_elem = self.raw_data[prev_sessions[:-1], 0]
+                hist_p_elem = np.concatenate(([self.raw_data[prev_sessions[0]][6] * 1.0 / self.raw_data[prev_sessions[0]][5]], hist_p_elem))
+                hist_p_elem = np.pad(np.array(hist_p_elem), (0, self.MAX_SESSIONS - len(hist_p_elem)), 'constant', constant_values=-1)
+                hist_p.append(hist_p_elem)
         else:
             all_sessions = self.user_item_ctx[user_id][item_id]
-            prev_sessions = all_sessions[:all_sessions.index(idx)]
+            prev_sessions = all_sessions[:all_sessions.index(idx)+1]
+            hist_p = self.raw_data[prev_sessions[:-1], 0]
+            hist_p = np.concatenate(([self.raw_data[prev_sessions[0]][6] * 1.0 / self.raw_data[prev_sessions[0]][5]], hist_p))
+            hist_p = np.pad(hist_p, (0, self.MAX_SESSIONS - len(hist_p)), 'constant', constant_values=-1)
 
+        hist_p = np.array(hist_p).astype(np.float32)
         sample = {
             'delta': delta, 
             'p': p,
             'correct': correct,
             'incorrect': incorrect,
-            'prev_sessions': prev_sessions
+            'hist_p': hist_p
         }
 
         return sample
@@ -101,6 +110,6 @@ class DuoLingo(Dataset):
 
 if __name__ == "__main__":
     dataset = DuoLingo()
-    print(dataset[0]) # Test single indexing
-    print(dataset[[1,9]]) # Test list indexing
+    print(dataset[0])
+    print(dataset[[100, 108]])
         
