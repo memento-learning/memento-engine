@@ -7,11 +7,13 @@ class Leitner(torch.nn.Module):
         super().__init__()
         self.p_a = 0.5
 
-    def forward(self, right, wrong):
-        rw = right - wrong
+    def forward(self, x):
+        correct = x['correct']
+        incorrect = x['incorrect']
+        rw = correct - incorrect
         I = 2.0**rw # Suggested interval by algorithim
         h_t = -I/math.log2(self.p_a) # normalize for target probability assumption
-        return h_t
+        return torch.clamp(h_t, 1e-4, 274.0)
 
 class SM2(torch.nn.Module):
     def __init__(self):
@@ -25,8 +27,8 @@ class SM2(torch.nn.Module):
         self.EF = None
         self.EF_floor = None
 
-    def forward(self, p):
-
+    def forward(self, x):
+        p = x['hist_p']
         if self.batch_shape!=p.shape:
             self.batch_shape = p.shape
             self.I_i = torch.ones(p.shape[0]).to(p.device)
@@ -60,30 +62,10 @@ class SM2(torch.nn.Module):
             
             I = torch.clamp(I, 1.0, 274.0)
 
-            EF = EF + (0.1 - (5-q) * (.08 + (5-q) * 0.02))
-            EF = torch.max(EF, EF_floor)
-
-            n = (n + 1)*correct_mask + n*torch.logical_not(correct_mask)
-
-        # for q_n in q:
-        #     if q == -1:
-        #         break    
-        #     elif q_n >= 3:
-        #         if n == 0:
-        #             I = 1
-        #         elif n == 1:
-        #             I = 6
-        #         else:
-        #             I *= EF
-        #         EF += (0.1 - (5-q_n) * (.08 + (5-q_n) * 0.02))
-        #         EF = torch.max(EF, EF_floor)    
-        #         n+=1  
-        #     else:
-        #         n = 0
-        #         I = 1
-       
-        h_t = I/self.p_a # normalize for target probability assumption
-
-        
-        return  torch.clamp(h_t, 15.0 / (24 * 60), 274)
-    
+            EF_n = EF + (0.1 - (5-q) * (.08 + (5-q) * 0.02))
+            EF_n = torch.max(EF_n, EF_floor)
+            EF = EF*torch.logical_not(correct_mask) + EF_n*correct_mask
+            n = (n + 1)*correct_mask
+            
+        h_t = -I/math.log2(self.p_a)
+        return torch.clamp(h_t, 1e-4, 274.0)

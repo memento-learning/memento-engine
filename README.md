@@ -6,7 +6,7 @@ This repository contains research for memento spaced repitition algorithim resea
 
 Install python 3.8 via pyenv:
 
-`curl https://pyenv.run | bash`
+`curl https://pyenv.run | $SHELL`
 `pyenv update`
 `pyenv install 3.8.0`
 `pyenv global 3.8.0`
